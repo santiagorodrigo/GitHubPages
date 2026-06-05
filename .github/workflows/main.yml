@@ -37,13 +37,15 @@ jobs:
           run: dotnet build --configuration Release --no-restore
 
         - name: Publish
-          run: dotnet publish GitHubPages.csproj --configuration Release --no-restore -o docs --no-logo
+          run: dotnet publish GitHubPages.csproj --configuration:Release --no-restore -o docs --nologo
           
         - name: Setup Pages
           uses: actions/configure-pages@v5
           
         - name: upload to Pages
           uses: actions/upload-pages-artifact@v4
+          with:
+            path: 'docs/wwwroot'
         
         - name: Deploy to Pages
           id: deployment
