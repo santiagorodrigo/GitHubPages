@@ -21,4 +21,8 @@
     <Content Include=".github\workflows\main.yml" />
   </ItemGroup>
 
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="wwwroot\sample-data\weather.json" />
+  </ItemGroup>
+
 </Project>
