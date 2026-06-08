@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Blazor WebAssembly (WASM) app targeting .NET 10.0, deployed to GitHub Pages at `https://santiagorodrigo.github.io/GitHubPages/`. This is a **client-side-only** app — there is no server component. All data is fetched from static files in `wwwroot/`.
+Blazor WebAssembly (WASM) single-page recruiter portfolio for **Rodrigo Santiago**, targeting .NET 10.0. Deployed via GitHub Pages to the custom domain `https://www.rodrigo-santiago.dev`. Client-side only — no server component, no backend API.
 
 ## Commands
 
@@ -18,28 +18,60 @@ dotnet watch
 # Build
 dotnet build --configuration Release
 
-# Publish to docs/ (matches CI output path)
+# Publish (matches CI output path)
 dotnet publish GitHubPages.csproj --configuration Release -o docs --nologo
 ```
 
 ## Architecture
 
-**Routing**: `App.razor` configures the Blazor router. Pages live in `Pages/` and declare their route with `@page "/route"`. The `NotFound` page handles unmatched routes. The layout is wired via `DefaultLayout` in `App.razor`.
+### Routing & Layout
 
-**Layout**: `Layout/MainLayout.razor` defines the page shell (sidebar + content area). `Layout/NavMenu.razor` is the collapsible sidebar nav.
+`App.razor` configures the Blazor router. The only page is `Pages/Home.razor` (`@page "/"`). `Layout/MainLayout.razor` is a minimal shell — sticky top navbar (`Layout/NavMenu.razor`) + `@Body`. There is no sidebar.
 
-**Data fetching**: Components inject `HttpClient` (registered with `BaseAddress` set to the app's host URL in `Program.cs`) and fetch static JSON from `wwwroot/sample-data/`. There is no backend API.
+### Component Structure (SOLID / SRP)
 
-**PWA**: The app registers a service worker (`wwwroot/service-worker.js`). The published version uses `wwwroot/service-worker.published.js` (swapped at publish time via the `.csproj` `<ServiceWorker>` item).
+`Pages/Home.razor` is a pure composition root — it renders six section components in order:
+
+```
+Components/
+  ProfileData.cs          ← single source of truth for Email, LinkedIn URL, resume path
+  HeroSection.razor       ← hero, stats, CTA buttons
+  AboutSection.razor      ← summary paragraph + key strengths card
+  SkillsSection.razor     ← 5 grouped skill badge cards
+  ExperienceSection.razor ← timeline (8 detailed roles) + 3 mini earlier-experience cards
+  EducationSection.razor  ← education, certifications, languages
+  ProfileFooter.razor     ← footer with contact links + motto
+```
+
+To add or edit a section, touch only that component's `.razor` file. To change contact info or URLs, edit `ProfileData.cs` — it propagates everywhere.
+
+### CSS
+
+All styles live in `wwwroot/css/app.css` (global). CSS custom properties (`--navy`, `--blue`, etc.) are defined in the `:root` block at the top of that file.
+
+**Do not put `:root { --var: value }` in any `.razor.css` scoped file.** Blazor CSS isolation rewrites `:root` to `:root[b-xxxx]` which never matches, silently breaking all `var(--...)` references.
+
+`Layout/NavMenu.razor.css` and `Layout/MainLayout.razor.css` are the only scoped CSS files in use.
+
+### Static Assets
+
+| Path | Purpose |
+|------|---------|
+| `wwwroot/downloads/Rodrigo_Santiago-Resume.pdf` | Resume PDF — linked in the navbar download button |
+| `wwwroot/CNAME` | Custom domain declaration (`www.rodrigo-santiago.dev`) |
+| `wwwroot/css/app.css` | All profile styles + CSS variables |
 
 ## GitHub Pages Deployment
 
-CI (`main.yml`) runs on every push to `main`: restores → builds → publishes → uploads `docs/wwwroot` to GitHub Pages.
+CI (`.github/workflows/main.yml`) triggers on push to `main`:
+restores → builds → publishes to `docs/` → uploads `docs/wwwroot` as the Pages artifact → deploys.
 
-**Critical**: `wwwroot/index.html` has the `<base href>` hardcoded to the production GitHub Pages subdirectory path:
+### base href
 
-```html
-<base href="https://santiagorodrigo.github.io/GitHubPages/" />
-```
+`wwwroot/index.html` uses `<base href="/" />` — correct for both local dev and the custom domain (served from the domain root). Do not change it back to a subdirectory URL.
 
-This is required because GitHub Pages serves the app from a subdirectory, not the domain root. When running locally, Blazor dev server handles routing without this, but the hardcoded value means local dev may behave differently for asset paths. If you need to test with the correct base locally, temporarily switch it to `<base href="/" />`.
+The `CNAME` file in `wwwroot/` tells GitHub Pages to use `www.rodrigo-santiago.dev`. GitHub redirects the legacy `santiagorodrigo.github.io/GitHubPages/` URL to the custom domain automatically.
+
+### If the app is stuck on the loading screen locally
+
+The browser cached the page from before the `base href` fix. Hard-refresh with `Ctrl+Shift+R` or open an incognito window.
